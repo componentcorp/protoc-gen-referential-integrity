@@ -24,7 +24,7 @@ clean: ## clean up generated files
 tests: protoc-plugin/generated/refcheck.pb.go build/tests/generation/test.pb.go 
 	echo "done"
 
-build/tests/generation/test.pb.go: build/tests/generation
+build/tests/generation/test.pb.go: build/tests/generation tests/protobuf/test.proto
 	protoc -I . -I tests/protobuf \
 		--plugin=protoc-gen-go=${GOPATH}/bin/protoc-gen-go \
 		--go_opt=paths=source_relative \

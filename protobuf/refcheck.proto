@@ -2,10 +2,27 @@ syntax = "proto2";
 package reference.check;
 
 option go_package = "github.com/componentcorp/protoc-gen-validate-references/check";
-option java_package = "com.componentcorp.protobuf.references.check";
+option java_package = "com.componentcorp.protobuf.reference.check";
 
 import "google/protobuf/descriptor.proto";
 
+
+// refcheck.proto uses its own key definitions to annotate itself with uniqueness and key checks
+// so that the system can generate rules to validate other reference check validate files.
+option (fileOpts)= { 
+    keys : [ 
+        //KeyDeclaration are required to be uniquely named within a .proto file
+        //in addition, they are referred to by other elements
+        { name: "KEY_DECL", type: PRIMARY}, 
+        //For Foreign Keys, KeyDeclarations are required to be named after the name 
+        //of a declared primary key
+        { name: "FK_REF", type: FOREIGN, references: "KEY_DECL"},
+        // KeyElement records are also required to be attached to a declared primary key
+        { name: "KEY_ELEMENT", type: FOREIGN, references: "KEY_DECL"},
+        // The combination of name and order from KeyElement is required to be unique
+        { name: "KEY_ELEMENT_CHECK", type: UNIQUE}
+    ] 
+};
 
 extend google.protobuf.FileOptions {
     optional RIFileOptions fileOpts = 50000;
@@ -14,20 +31,24 @@ extend google.protobuf.FileOptions {
 
 // Message Level options
 extend google.protobuf.MessageOptions {
-    // keyRoot identifies a root in the message hierarchy for a particular primary
-    // key
     optional RIMessageOptions msgOpts = 50000;
 }
 
 
 extend google.protobuf.FieldOptions {
-    // Rules specify the validations to be performed on this field. By default,
-    // no validation is performed against a field.
     optional RIFieldOptions fldOpts = 50000;
 }
 
 message RIFileOptions {
     repeated KeyDeclaration keys=1;
+    // indicates that any primary key KeyElements that are flagged as "external" should be unique
+    // this is typically used in tiled data structures where each tile has an id and each chunk of data
+    // represents only one tile.
+    // By implication, data local to a tile can use a partial key for local references, thus where 
+    // local_external_id_unique is set to true, foreign keys not providing external elements are considered
+    // local references.
+    optional bool local_external_id_unique=3;  
+
 }
 
 message RIMessageOptions {
@@ -35,15 +56,55 @@ message RIMessageOptions {
 }
 
 message RIFieldOptions {
-    repeated KeyDeclaration keys=1;
+    // FieldOptions can generally only be applied to raw types
+    // Well Known Types should hopefully work as well although 
+    // Some work will have to be done.
+    message FieldOptions {
+        repeated KeyElement elements=2;
+    }
+    oneof type{
+        FieldOptions keydef=1;
+        //if a field is a message, then it can be annotated with KeyDeclarations
+        RIMessageOptions keys=2;
+        //Maps allow KeyElements to be allocated to both the keys and the values in the map.
+        RIMapOptions map=3;
+    }
+    
 }
 
-// MapRules allow map keys and values to be used in keys.
+// RIMapOptions allow map keys and values to be used in keys.
 message RIMapOptions {
-    optional bool dummy=1;
+    repeated KeyDeclaration key_keys=1;
+    repeated KeyDeclaration value_keys=2;
+}
+
+enum KeyType {
+    UNKNOWN=0;
+    PRIMARY=1;  // A primary key
+    UNIQUE=2;
+    FOREIGN=3;
+    EXTERNAL=4; // A foreign key that refers outside the content of a message.  Needs to be resolved by
+                // an external resolver
 }
 
 message KeyDeclaration {
-    optional string name =1;
+    optional string name =1[(fldOpts).keydef = { elements: [{keyname: "KEY_DECL"}]}];
+    optional KeyType type=2;
+    optional string references=3[(fldOpts).keydef = { elements: [{keyname: "FK_REF"}]}];
+}
+
+message KeyElement {
+    optional string keyname=1[(fldOpts).keydef = { elements: [
+        {keyname: "KEY_ELEMENT"},
+        {keyname: "KEY_ELEMENT_CHECK",order:0}
+        ]
+    }];
+    optional uint32 order=2[(fldOpts).keydef = { elements: [
+        {keyname: "KEY_ELEMENT_CHECK",order:1}
+        ]
+    }];
+    //indicates that the key element is potentially external.  External intervention
+    //will be required should this field not match an internal id.
+    optional bool external=3;
 }
 
