@@ -1,4 +1,4 @@
-# protoc-gen-validate-references (PGRI)
+# protoc-gen-referential-integrity (PGRI)
 
 *This project is currently in **inception**. Feature suggestions are welcome as issues.*
 
