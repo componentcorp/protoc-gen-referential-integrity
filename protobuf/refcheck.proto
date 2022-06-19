@@ -1,0 +1,49 @@
+syntax = "proto2";
+package reference.check;
+
+option go_package = "github.com/componentcorp/protoc-gen-validate-references/check";
+option java_package = "com.componentcorp.protobuf.references.check";
+
+import "google/protobuf/descriptor.proto";
+
+
+extend google.protobuf.FileOptions {
+    optional RIFileOptions fileOpts = 50000;
+}
+
+
+// Message Level options
+extend google.protobuf.MessageOptions {
+    // keyRoot identifies a root in the message hierarchy for a particular primary
+    // key
+    optional RIMessageOptions msgOpts = 50000;
+}
+
+
+extend google.protobuf.FieldOptions {
+    // Rules specify the validations to be performed on this field. By default,
+    // no validation is performed against a field.
+    optional RIFieldOptions fldOpts = 50000;
+}
+
+message RIFileOptions {
+    repeated KeyDeclaration keys=1;
+}
+
+message RIMessageOptions {
+    repeated KeyDeclaration keys=1;
+}
+
+message RIFieldOptions {
+    repeated KeyDeclaration keys=1;
+}
+
+// MapRules allow map keys and values to be used in keys.
+message RIMapOptions {
+    optional bool dummy=1;
+}
+
+message KeyDeclaration {
+    optional string name =1;
+}
+

@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package examplepb;
+
+option go_package = "github.com/componentcorp/protoc-gen-validate-references/tests";
+
+import "protobuf/refcheck.proto";
+
+option (reference.check.fileOpts)= { keys : [ 
+        { name: "file_key1"}, 
+        { name: "file_key2"}
+    ] 
+};
+
+message Test {
+    option (reference.check.msgOpts)={ keys :[ { name: "msg_key1"}, { name: "msg_key2"}]};
+    repeated Nested nestedMsgs=1 [(reference.check.fldOpts) = { keys: [ { name: "fld_key1"}, { name: "fld_key2"}] } ];
+}
+
+message Nested {
+    uint32 id =1;
+}
